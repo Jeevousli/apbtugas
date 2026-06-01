@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "11024842594",
+    "project_id": "apbtugas-f6737",
+    "storage_bucket": "apbtugas-f6737.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:11024842594:android:82c3c47d8bedc95343763b",
+        "android_client_info": {
+          "package_name": "com.example.apbtugas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2TNf2mMs0g-Msdhl7U3Qez--09-2rrZs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,52 @@
+name: apbtugas
+description: "APB Connect - Employee Management & Safety App"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^3.13.1
+  firebase_auth: ^5.5.3
+  cloud_firestore: ^5.6.9
+  firebase_storage: ^12.4.5
+  firebase_messaging: ^15.2.5
+
+  # State Management
+  provider: ^6.1.2
+
+  # Local Storage
+  shared_preferences: ^2.5.3
+
+  # Navigation
+  go_router: ^15.1.2
+
+  # UI
+  google_fonts: ^6.2.1
+  lottie: ^3.3.1
+  flutter_svg: ^2.0.17
+
+  # Utilities
+  equatable: ^2.0.7
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/icons/
