@@ -5,7 +5,11 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/attendance_provider.dart';
 import '../../widgets/app_logo.dart';
+import '../../widgets/clock_in_button.dart';
+import '../../../domain/entities/attendance_record.dart';
+import '../../../domain/entities/gps_status.dart';
 
 class EmployeeDashboardScreen extends StatefulWidget {
   const EmployeeDashboardScreen({super.key});
@@ -18,6 +22,17 @@ class EmployeeDashboardScreen extends StatefulWidget {
 class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
   int _selectedIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        context.read<AttendanceProvider>().fetchData(user);
+      }
+    });
+  }
+
   final List<_NavItem> _navItems = const [
     _NavItem(icon: Icons.dashboard_rounded, label: 'Dashboard'),
     _NavItem(icon: Icons.fingerprint_rounded, label: 'Absensi'),
@@ -28,6 +43,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final attendance = context.watch<AttendanceProvider>();
     final user = auth.currentUser;
 
     return Scaffold(
@@ -58,12 +74,12 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _buildBody(context, user),
+      body: _buildBody(context, user, attendance),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildBody(BuildContext context, user) {
+  Widget _buildBody(BuildContext context, user, AttendanceProvider attendance) {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -72,43 +88,119 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
           colors: [AppColors.primaryDark, AppColors.primary],
         ),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Greeting Card
-            _buildGreetingCard(context, user),
-            const SizedBox(height: 20),
+      child: RefreshIndicator(
+        onRefresh: () async {
+          if (user != null) {
+            await attendance.fetchData(user);
+          }
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting Card
+              _buildGreetingCard(context, user),
+              const SizedBox(height: 20),
 
-            // Quick Actions
-            Text(
-              'Aksi Cepat',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            _buildQuickActions(context),
-            const SizedBox(height: 20),
+              // Quick Actions
+              Text(
+                'Aksi Cepat',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _buildQuickActions(context),
+              const SizedBox(height: 20),
 
-            // Attendance Summary
-            Text(
-              'Kehadiran Bulan Ini',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            _buildAttendanceSummary(context),
-            const SizedBox(height: 20),
+              // Absensi Hari Ini (GPS Validation)
+              Text(
+                'Absensi GPS',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _buildDynamicClockButton(context, user, attendance),
+              const SizedBox(height: 20),
 
-            // Announcements
-            Text(
-              'Pengumuman Terbaru',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            _buildAnnouncementPlaceholders(context),
-          ],
+              // Attendance Summary
+              Text(
+                'Kehadiran Minggu Ini',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _buildAttendanceSummary(context, attendance),
+              const SizedBox(height: 20),
+
+              // Riwayat Absensi Terakhir
+              Text(
+                'Riwayat Absensi Terakhir',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _buildAttendanceHistory(context, attendance),
+              const SizedBox(height: 20),
+
+              // Announcements
+              Text(
+                'Pengumuman Terbaru',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _buildAnnouncementPlaceholders(context),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDynamicClockButton(BuildContext context, user, AttendanceProvider attendance) {
+    if (attendance.isLoading && attendance.todayRecords.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (attendance.hasClockedOutToday) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              'Anda sudah menyelesaikan absensi hari ini.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.success,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final type = attendance.hasClockedInToday ? AttendanceType.clockOut : AttendanceType.clockIn;
+
+    return ClockInButton(
+      attendanceType: type,
+      onClockSuccess: (result, type) async {
+        if (user != null) {
+          final partial = AttendanceRecord(
+            id: '',
+            userId: user.uid,
+            userName: user.name,
+            type: type,
+            timestamp: result.timestamp,
+            status: result.status.label,
+            distanceInMeters: result.distanceInMeters,
+          );
+          await attendance.clock(user, type, partial);
+        }
+      },
     );
   }
 
@@ -265,13 +357,13 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
     );
   }
 
-  Widget _buildAttendanceSummary(BuildContext context) {
-    final stats = [
-      _AttendanceStat(label: 'Hadir', value: '18', color: AppColors.success),
-      _AttendanceStat(label: 'Izin', value: '2', color: AppColors.warning),
-      _AttendanceStat(label: 'Alpha', value: '0', color: AppColors.error),
-      _AttendanceStat(
-          label: 'Terlambat', value: '1', color: AppColors.secondary),
+  Widget _buildAttendanceSummary(BuildContext context, AttendanceProvider attendance) {
+    final stats = attendance.weeklyStats;
+    final statList = [
+      _AttendanceStat(label: 'Hadir', value: '${stats['present'] ?? 0}', color: AppColors.success),
+      _AttendanceStat(label: 'Telat', value: '${stats['late'] ?? 0}', color: AppColors.warning),
+      _AttendanceStat(label: 'Alpha', value: '${stats['absent'] ?? 0}', color: AppColors.error),
+      _AttendanceStat(label: 'Izin', value: '${stats['leave'] ?? 0}', color: AppColors.secondary),
     ];
 
     return Container(
@@ -281,7 +373,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        children: stats
+        children: statList
             .map((s) => Expanded(
                   child: Column(
                     children: [
@@ -308,6 +400,87 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                 ))
             .toList(),
       ),
+    );
+  }
+
+  Widget _buildAttendanceHistory(BuildContext context, AttendanceProvider attendance) {
+    if (attendance.isLoading && attendance.history.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (attendance.history.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primaryCard,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text('Belum ada riwayat absensi.', textAlign: TextAlign.center),
+      );
+    }
+
+    return Column(
+      children: attendance.history.map((record) {
+        final isClockIn = record.type == AttendanceType.clockIn;
+        final iconColor = isClockIn ? AppColors.success : AppColors.info;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.primaryCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primaryCard),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isClockIn ? Icons.login_rounded : Icons.logout_rounded,
+                  color: iconColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isClockIn ? 'Clock In' : 'Clock Out',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${record.timestamp.day}/${record.timestamp.month}/${record.timestamp.year} ${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                record.status == 'IN_AREA' ? 'Valid' : 'Invalid',
+                style: TextStyle(
+                  color: record.status == 'IN_AREA' ? AppColors.success : AppColors.error,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 

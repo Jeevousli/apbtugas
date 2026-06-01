@@ -11,6 +11,7 @@ import 'core/constants/app_theme.dart';
 import 'data/datasources/auth_local_datasource.dart';
 import 'data/datasources/auth_remote_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/attendance_repository_impl.dart';
 import 'domain/usecases/create_employee_usecase.dart';
 import 'domain/usecases/forgot_password_usecase.dart';
 import 'domain/usecases/get_current_user_usecase.dart';
@@ -18,6 +19,7 @@ import 'domain/usecases/login_usecase.dart';
 import 'domain/usecases/logout_usecase.dart';
 import 'firebase_options.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/attendance_provider.dart';
 import 'presentation/screens/admin/create_employee_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
@@ -85,6 +87,9 @@ class MyApp extends StatelessWidget {
       remote: remoteDataSource,
       local: localDataSource,
     );
+    final attendanceRepository = AttendanceRepositoryImpl(
+      firestore: FirebaseFirestore.instance,
+    );
 
     return MultiProvider(
       providers: [
@@ -97,6 +102,9 @@ class MyApp extends StatelessWidget {
             createEmployeeUseCase: CreateEmployeeUseCase(authRepository),
             localDataSource: localDataSource,
           ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AttendanceProvider(repository: attendanceRepository),
         ),
       ],
       child: MaterialApp.router(
