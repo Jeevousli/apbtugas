@@ -5,6 +5,9 @@ import '../../core/services/gps_validator.dart';
 import '../../domain/entities/gps_status.dart';
 import '../../domain/entities/gps_validation_result.dart';
 import '../../domain/entities/attendance_record.dart';
+import '../screens/camera/face_capture_screen.dart';
+import '../providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ClockInButton – example widget demonstrating GPSValidator usage
@@ -34,8 +37,9 @@ import '../../domain/entities/attendance_record.dart';
 /// )
 /// ```
 class ClockInButton extends StatefulWidget {
-  /// Called after GPS validation passes (status == inArea).
+  /// Called after GPS validation passes AND face capture succeeds.
   /// Receives the full [GpsValidationResult] for Firestore persistence.
+  /// Note: After face integration, this is called from FaceSuccessScreen.
   final Future<void> Function(GpsValidationResult result, AttendanceType type)? onClockSuccess;
 
   /// Optional custom [GPSValidator] — useful for injecting a test double.
@@ -98,19 +102,28 @@ class _ClockInButtonState extends State<ClockInButton>
       final result = await validator.validate();
 
       if (!mounted) return;
-
       setState(() => _lastResult = result);
 
       if (result.isInsideArea) {
-        // ✅ User is within office radius — proceed with clock-in/out
-        await widget.onClockSuccess?.call(result, widget.attendanceType);
-        final label = widget.attendanceType == AttendanceType.clockIn ? 'Clock-in' : 'Clock-out';
-        if (mounted) {
-          _showSnackBar(
-            '✅ $label berhasil! Jarak dari kantor: ${result.formattedDistance}',
-            isError: false,
-          );
+        // ✅ GPS valid — navigate to Face Capture screen
+        final authProvider = context.read<AuthProvider>();
+        final user = authProvider.currentUser;
+        if (user == null) {
+          _showSnackBar('⚠️ Sesi tidak ditemukan. Silakan login ulang.', isError: true);
+          return;
         }
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => FaceCaptureScreen(
+              attendanceType: widget.attendanceType,
+              userId: user.uid,
+              userName: user.name,
+              gpsStatus: result.status.label,
+              distanceInMeters: result.distanceInMeters,
+            ),
+          ),
+        );
       } else {
         // ❌ User is too far from office
         if (mounted) {

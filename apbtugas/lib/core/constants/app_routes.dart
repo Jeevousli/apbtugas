@@ -8,4 +8,8 @@ class AppRoutes {
   static const String adminDashboard = '/admin/dashboard';
   static const String adminCreateEmployee = '/admin/create-employee';
   static const String profile = '/profile';
+  static const String faceCapture = '/face-capture';
+  static const String faceSuccess = '/face-success';
+  static const String faceFailed = '/face-failed';
 }
+

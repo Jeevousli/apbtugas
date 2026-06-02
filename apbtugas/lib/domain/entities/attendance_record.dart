@@ -26,6 +26,7 @@ class AttendanceRecord extends Equatable {
   final DateTime timestamp;
   final String status; // 'IN_AREA' or 'OUTSIDE_AREA'
   final double distanceInMeters;
+  final String? selfieUrl; // Firebase Storage URL after face capture
 
   const AttendanceRecord({
     required this.id,
@@ -35,6 +36,7 @@ class AttendanceRecord extends Equatable {
     required this.timestamp,
     required this.status,
     required this.distanceInMeters,
+    this.selfieUrl,
   });
 
   factory AttendanceRecord.fromFirestore(String id, Map<String, dynamic> data) {
@@ -46,6 +48,7 @@ class AttendanceRecord extends Equatable {
       timestamp: DateTime.parse(data['timestamp'] as String).toLocal(),
       status: data['status'] ?? 'UNKNOWN',
       distanceInMeters: (data['distanceInMeters'] as num?)?.toDouble() ?? 0.0,
+      selfieUrl: data['selfieUrl'] as String?,
     );
   }
 
@@ -57,10 +60,11 @@ class AttendanceRecord extends Equatable {
       'timestamp': timestamp.toUtc().toIso8601String(),
       'status': status,
       'distanceInMeters': distanceInMeters,
+      if (selfieUrl != null) 'selfieUrl': selfieUrl,
     };
   }
 
   @override
   List<Object?> get props =>
-      [id, userId, userName, type, timestamp, status, distanceInMeters];
+      [id, userId, userName, type, timestamp, status, distanceInMeters, selfieUrl];
 }
