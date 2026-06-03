@@ -99,4 +99,78 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       'leave': 0,  // Placeholder
     };
   }
+
+  @override
+  Future<List<AttendanceRecord>> getFilteredHistory(
+    String userId, {
+    AttendanceStatus? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 20,
+    DateTime? lastTimestamp,
+  }) async {
+    try {
+      var query = _firestore
+          .collection('attendance')
+          .doc(userId)
+          .collection('records')
+          .orderBy('timestamp', descending: true);
+
+      if (startDate != null) {
+        query = query.where('timestamp',
+            isGreaterThanOrEqualTo: startDate.toUtc().toIso8601String());
+      }
+      if (endDate != null) {
+        final endOfDay = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999).toUtc();
+        query = query.where('timestamp',
+            isLessThanOrEqualTo: endOfDay.toIso8601String());
+      }
+      if (lastTimestamp != null) {
+        query = query.where('timestamp',
+            isLessThan: lastTimestamp.toUtc().toIso8601String());
+      }
+
+      // We load more records than requested if filtering by status, to allow in-memory filtering
+      // without running into missing compound index errors.
+      final fetchLimit = status != null ? limit * 3 : limit;
+      final snapshot = await query.limit(fetchLimit).get();
+      
+      var records = snapshot.docs
+          .map((doc) => AttendanceRecord.fromFirestore(doc.id, doc.data()))
+          .toList();
+
+      if (status != null) {
+        records = records.where((r) => r.attendanceStatus == status).toList();
+        if (records.length > limit) {
+          records = records.sublist(0, limit);
+        }
+      }
+
+      return records;
+    } catch (e) {
+      // Fallback query
+      final snapshot = await _firestore
+          .collection('attendance')
+          .doc(userId)
+          .collection('records')
+          .orderBy('timestamp', descending: true)
+          .limit(limit)
+          .get();
+      return snapshot.docs
+          .map((doc) => AttendanceRecord.fromFirestore(doc.id, doc.data()))
+          .toList();
+    }
+  }
+
+  @override
+  Future<AttendanceRecord?> getAttendanceById(String userId, String recordId) async {
+    final doc = await _firestore
+        .collection('attendance')
+        .doc(userId)
+        .collection('records')
+        .doc(recordId)
+        .get();
+    if (!doc.exists || doc.data() == null) return null;
+    return AttendanceRecord.fromFirestore(doc.id, doc.data()!);
+  }
 }

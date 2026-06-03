@@ -179,6 +179,11 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateCurrentUser(UserEntity user) {
+    _currentUser = user;
+    notifyListeners();
+  }
+
   void _setStatus(AuthStatus status) {
     _status = status;
     notifyListeners();

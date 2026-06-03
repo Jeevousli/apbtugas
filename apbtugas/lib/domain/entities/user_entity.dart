@@ -11,6 +11,10 @@ class UserEntity extends Equatable {
   final DateTime createdAt;
   final String? fcmToken;
   final String? photoUrl;
+  final String? phone;
+  final String? department;
+  final String? position;
+  final String? employeeStatus;
 
   const UserEntity({
     required this.uid,
@@ -21,11 +25,28 @@ class UserEntity extends Equatable {
     required this.createdAt,
     this.fcmToken,
     this.photoUrl,
+    this.phone,
+    this.department,
+    this.position,
+    this.employeeStatus,
   });
 
   bool get isAdmin => role == UserRole.admin;
   bool get isEmployee => role == UserRole.employee;
 
   @override
-  List<Object?> get props => [uid, email, nik, role];
+  List<Object?> get props => [
+        uid,
+        name,
+        email,
+        nik,
+        role,
+        createdAt,
+        fcmToken,
+        photoUrl,
+        phone,
+        department,
+        position,
+        employeeStatus,
+      ];
 }

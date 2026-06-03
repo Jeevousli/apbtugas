@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/user_entity.dart';
 import '../models/user_model.dart';
@@ -159,6 +162,87 @@ class AuthRemoteDataSource {
     } finally {
       if (tempApp != null) {
         await tempApp.delete();
+      }
+    }
+  }
+
+  // ─────────────────────── PROFILE MANAGEMENT ───────────────────────
+  Future<UserModel> updateProfile({
+    required String uid,
+    String? name,
+    String? phone,
+    String? photoUrl,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (phone != null) updates['phone'] = phone;
+      if (photoUrl != null) updates['photoUrl'] = photoUrl;
+
+      if (updates.isEmpty) {
+        return await _getUserFromFirestore(uid);
+      }
+
+      await _usersCollection.doc(uid).update(updates);
+      return await _getUserFromFirestore(uid);
+    } catch (e) {
+      throw AuthFailure('Gagal memperbarui profil: $e');
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw const AuthFailure('Pengguna tidak terautentikasi');
+      }
+
+      // Re-authenticate user first
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(cred);
+
+      // Update password
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw _mapAuthException(e);
+    } catch (e) {
+      throw AuthFailure('Gagal mengubah password: $e');
+    }
+  }
+
+  Future<String> uploadProfilePhoto({
+    required String uid,
+    required String filePath,
+  }) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw const AuthFailure('File foto tidak ditemukan');
+      }
+
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos')
+          .child('$uid.jpg');
+
+      final uploadTask = await ref.putFile(file);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      // Fallback to base64 if storage is not configured/accessible
+      try {
+        final file = File(filePath);
+        final bytes = await file.readAsBytes();
+        final base64String = base64Encode(bytes);
+        return 'data:image/jpeg;base64,$base64String';
+      } catch (innerErr) {
+        throw AuthFailure('Gagal mengupload foto profil: $e');
       }
     }
   }

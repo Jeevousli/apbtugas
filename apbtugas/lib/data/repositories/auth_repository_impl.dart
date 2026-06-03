@@ -71,4 +71,41 @@ class AuthRepositoryImpl implements AuthRepository {
       nik: nik,
     );
   }
+
+  @override
+  Future<UserEntity> updateProfile({
+    required String uid,
+    String? name,
+    String? phone,
+    String? photoUrl,
+  }) {
+    return _remote.updateProfile(
+      uid: uid,
+      name: name,
+      phone: phone,
+      photoUrl: photoUrl,
+    );
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _remote.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  @override
+  Future<String> uploadProfilePhoto({
+    required String uid,
+    required String filePath,
+  }) {
+    return _remote.uploadProfilePhoto(
+      uid: uid,
+      filePath: filePath,
+    );
+  }
 }

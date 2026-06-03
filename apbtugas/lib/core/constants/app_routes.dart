@@ -11,5 +11,8 @@ class AppRoutes {
   static const String faceCapture = '/face-capture';
   static const String faceSuccess = '/face-success';
   static const String faceFailed = '/face-failed';
+  static const String attendanceDetail = '/attendance-detail';
+  static const String editProfile = '/edit-profile';
+  static const String changePassword = '/change-password';
 }
 

@@ -11,6 +11,10 @@ class UserModel extends UserEntity {
     required super.createdAt,
     super.fcmToken,
     super.photoUrl,
+    super.phone,
+    super.department,
+    super.position,
+    super.employeeStatus,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -24,6 +28,10 @@ class UserModel extends UserEntity {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       fcmToken: data['fcmToken'],
       photoUrl: data['photoUrl'],
+      phone: data['phone'],
+      department: data['department'],
+      position: data['position'],
+      employeeStatus: data['employeeStatus'],
     );
   }
 
@@ -37,6 +45,10 @@ class UserModel extends UserEntity {
       'createdAt': Timestamp.fromDate(createdAt),
       if (fcmToken != null) 'fcmToken': fcmToken,
       if (photoUrl != null) 'photoUrl': photoUrl,
+      if (phone != null) 'phone': phone,
+      if (department != null) 'department': department,
+      if (position != null) 'position': position,
+      if (employeeStatus != null) 'employeeStatus': employeeStatus,
     };
   }
 
@@ -50,6 +62,10 @@ class UserModel extends UserEntity {
       createdAt: entity.createdAt,
       fcmToken: entity.fcmToken,
       photoUrl: entity.photoUrl,
+      phone: entity.phone,
+      department: entity.department,
+      position: entity.position,
+      employeeStatus: entity.employeeStatus,
     );
   }
 }

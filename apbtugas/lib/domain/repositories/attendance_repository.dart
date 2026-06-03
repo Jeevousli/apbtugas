@@ -12,4 +12,17 @@ abstract class AttendanceRepository {
 
   /// Get attendance stats for the current week
   Future<Map<String, int>> getWeeklyStats(String userId);
+
+  /// Fetch filtered attendance history for a user
+  Future<List<AttendanceRecord>> getFilteredHistory(
+    String userId, {
+    AttendanceStatus? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 20,
+    DateTime? lastTimestamp,
+  });
+
+  /// Fetch a single attendance record by ID
+  Future<AttendanceRecord?> getAttendanceById(String userId, String recordId);
 }

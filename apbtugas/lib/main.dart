@@ -8,26 +8,38 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'core/constants/app_routes.dart';
 import 'core/constants/app_theme.dart';
 import 'data/datasources/auth_local_datasource.dart';
 import 'data/datasources/auth_remote_datasource.dart';
+import 'data/datasources/notification_remote_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/attendance_repository_impl.dart';
+import 'data/repositories/notification_repository_impl.dart';
+import 'core/services/fcm_service.dart';
 import 'domain/usecases/create_employee_usecase.dart';
 import 'domain/usecases/forgot_password_usecase.dart';
 import 'domain/usecases/get_current_user_usecase.dart';
 import 'domain/usecases/login_usecase.dart';
 import 'domain/usecases/logout_usecase.dart';
+import 'domain/usecases/update_profile_usecase.dart';
+import 'domain/usecases/change_password_usecase.dart';
+import 'domain/usecases/upload_profile_photo_usecase.dart';
 import 'firebase_options.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/attendance_provider.dart';
+import 'presentation/providers/profile_provider.dart';
+import 'presentation/providers/notification_provider.dart';
 import 'presentation/screens/admin/create_employee_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/dashboard/admin_dashboard_screen.dart';
 import 'presentation/screens/dashboard/employee_dashboard_screen.dart';
 import 'presentation/screens/splash/splash_screen.dart';
+import 'presentation/screens/employee/attendance_detail_screen.dart';
+import 'presentation/screens/employee/edit_profile_screen.dart';
+import 'presentation/screens/employee/change_password_screen.dart';
 
 // FCM background handler (must be top-level function)
 @pragma('vm:entry-point')
@@ -45,8 +57,6 @@ Future<void> main() async {
   );
 
   // ── Firebase App Check ──────────────────────────────────────
-  // Gunakan debug provider saat development/emulator,
-  // ganti ke playIntegrity saat production.
   await FirebaseAppCheck.instance.activate(
     androidProvider:
         kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
@@ -56,30 +66,11 @@ Future<void> main() async {
 
   // FCM Setup
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await _setupFCM();
 
   // SharedPreferences
   final prefs = await SharedPreferences.getInstance();
 
   runApp(MyApp(prefs: prefs));
-}
-
-Future<void> _setupFCM() async {
-  final messaging = FirebaseMessaging.instance;
-
-  // Request notification permission
-  final settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-  debugPrint('FCM permission: ${settings.authorizationStatus}');
-
-  // Foreground notification handler
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint('FCM foreground: ${message.notification?.title}');
-  });
 }
 
 class MyApp extends StatelessWidget {
@@ -103,20 +94,54 @@ class MyApp extends StatelessWidget {
       firestore: FirebaseFirestore.instance,
     );
 
+    // Notification dependencies
+    final notificationRemoteDataSource = NotificationRemoteDataSource(
+      firestore: FirebaseFirestore.instance,
+    );
+    final notificationRepository = NotificationRepositoryImpl(
+      remote: notificationRemoteDataSource,
+    );
+    final fcmService = FcmService(notificationRepository);
+    fcmService.initialize();
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => AuthProvider(
-            loginUseCase: LoginUseCase(authRepository),
-            logoutUseCase: LogoutUseCase(authRepository),
-            forgotPasswordUseCase: ForgotPasswordUseCase(authRepository),
-            getCurrentUserUseCase: GetCurrentUserUseCase(authRepository),
-            createEmployeeUseCase: CreateEmployeeUseCase(authRepository),
-            localDataSource: localDataSource,
-          ),
+          create: (context) {
+            final authProvider = AuthProvider(
+              loginUseCase: LoginUseCase(authRepository),
+              logoutUseCase: LogoutUseCase(authRepository),
+              forgotPasswordUseCase: ForgotPasswordUseCase(authRepository),
+              getCurrentUserUseCase: GetCurrentUserUseCase(authRepository),
+              createEmployeeUseCase: CreateEmployeeUseCase(authRepository),
+              localDataSource: localDataSource,
+            );
+
+            // Reactively bind FCM token update / removal to Auth status
+            authProvider.addListener(() {
+              final user = authProvider.currentUser;
+              if (authProvider.isAuthenticated && user != null) {
+                fcmService.onUserLoggedIn(user.uid);
+              } else {
+                fcmService.onUserLoggedOut();
+              }
+            });
+
+            return authProvider;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => AttendanceProvider(repository: attendanceRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NotificationProvider(notificationRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ProfileProvider(
+            updateProfileUseCase: UpdateProfileUseCase(authRepository),
+            changePasswordUseCase: ChangePasswordUseCase(authRepository),
+            uploadProfilePhotoUseCase: UploadProfilePhotoUseCase(authRepository),
+          ),
         ),
       ],
       child: MaterialApp.router(
@@ -155,6 +180,21 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: AppRoutes.adminCreateEmployee,
           builder: (context, state) => const CreateEmployeeScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.attendanceDetail,
+          builder: (context, state) {
+            final recordId = state.uri.queryParameters['id'] ?? '';
+            return AttendanceDetailScreen(recordId: recordId);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.editProfile,
+          builder: (context, state) => const EditProfileScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.changePassword,
+          builder: (context, state) => const ChangePasswordScreen(),
         ),
       ],
     );

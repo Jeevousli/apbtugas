@@ -18,6 +18,36 @@ extension AttendanceTypeX on AttendanceType {
   }
 }
 
+enum AttendanceStatus { hadir, telat, izin, alpha }
+
+extension AttendanceStatusX on AttendanceStatus {
+  String get value {
+    switch (this) {
+      case AttendanceStatus.hadir:
+        return 'hadir';
+      case AttendanceStatus.telat:
+        return 'telat';
+      case AttendanceStatus.izin:
+        return 'izin';
+      case AttendanceStatus.alpha:
+        return 'alpha';
+    }
+  }
+
+  static AttendanceStatus fromString(String val) {
+    switch (val.toLowerCase()) {
+      case 'telat':
+        return AttendanceStatus.telat;
+      case 'izin':
+        return AttendanceStatus.izin;
+      case 'alpha':
+        return AttendanceStatus.alpha;
+      default:
+        return AttendanceStatus.hadir;
+    }
+  }
+}
+
 class AttendanceRecord extends Equatable {
   final String id;
   final String userId;
@@ -27,6 +57,11 @@ class AttendanceRecord extends Equatable {
   final String status; // 'IN_AREA' or 'OUTSIDE_AREA'
   final double distanceInMeters;
   final String? selfieUrl; // Firebase Storage URL after face capture
+  final AttendanceStatus attendanceStatus;
+  final double? latitude;
+  final double? longitude;
+  final String? address;
+  final String? notes;
 
   const AttendanceRecord({
     required this.id,
@@ -36,7 +71,12 @@ class AttendanceRecord extends Equatable {
     required this.timestamp,
     required this.status,
     required this.distanceInMeters,
+    required this.attendanceStatus,
     this.selfieUrl,
+    this.latitude,
+    this.longitude,
+    this.address,
+    this.notes,
   });
 
   factory AttendanceRecord.fromFirestore(String id, Map<String, dynamic> data) {
@@ -49,6 +89,11 @@ class AttendanceRecord extends Equatable {
       status: data['status'] ?? 'UNKNOWN',
       distanceInMeters: (data['distanceInMeters'] as num?)?.toDouble() ?? 0.0,
       selfieUrl: data['selfieUrl'] as String?,
+      attendanceStatus: AttendanceStatusX.fromString(data['attendanceStatus'] ?? 'hadir'),
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      address: data['address'] as String?,
+      notes: data['notes'] as String?,
     );
   }
 
@@ -60,11 +105,29 @@ class AttendanceRecord extends Equatable {
       'timestamp': timestamp.toUtc().toIso8601String(),
       'status': status,
       'distanceInMeters': distanceInMeters,
+      'attendanceStatus': attendanceStatus.value,
       if (selfieUrl != null) 'selfieUrl': selfieUrl,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (address != null) 'address': address,
+      if (notes != null) 'notes': notes,
     };
   }
 
   @override
-  List<Object?> get props =>
-      [id, userId, userName, type, timestamp, status, distanceInMeters, selfieUrl];
+  List<Object?> get props => [
+        id,
+        userId,
+        userName,
+        type,
+        timestamp,
+        status,
+        distanceInMeters,
+        selfieUrl,
+        attendanceStatus,
+        latitude,
+        longitude,
+        address,
+        notes,
+      ];
 }

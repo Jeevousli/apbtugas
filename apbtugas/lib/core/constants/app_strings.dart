@@ -73,4 +73,18 @@ class AppStrings {
   static const String tooManyRequests =
       'Terlalu banyak percobaan. Coba beberapa saat lagi.';
   static const String sessionExpired = 'Sesi telah berakhir. Silakan login ulang.';
+
+  // Profile & Settings
+  static const String editProfileTitle = 'Edit Profil';
+  static const String changePasswordTitle = 'Ubah Password';
+  static const String nameLabel = 'Nama Lengkap';
+  static const String phoneLabel = 'Nomor Telepon';
+  static const String oldPasswordLabel = 'Password Sekarang';
+  static const String newPasswordLabel = 'Password Baru';
+  static const String confirmPasswordLabel = 'Konfirmasi Password Baru';
+  static const String saveButton = 'Simpan';
+  static const String savingProfile = 'Menyimpan profil...';
+  static const String profileUpdated = 'Profil berhasil diperbarui!';
+  static const String passwordChanged = 'Password berhasil diubah!';
+  static const String passwordMismatch = 'Konfirmasi password tidak cocok';
 }

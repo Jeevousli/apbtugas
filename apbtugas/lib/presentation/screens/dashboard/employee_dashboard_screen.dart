@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/attendance_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/clock_in_button.dart';
 import '../../../domain/entities/attendance_record.dart';
@@ -30,6 +31,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
         context.read<AttendanceProvider>().fetchData(user);
+        context.read<NotificationProvider>().subscribeToNotifications(user.uid);
       }
     });
   }
@@ -443,6 +445,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
   //  BOTTOM NAVIGATION BAR
   // ═══════════════════════════════════════════════════════════════════
   Widget _buildBottomNav() {
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.primaryDark,
@@ -454,10 +457,18 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
         items: _navItems
             .asMap()
             .entries
-            .map((e) => BottomNavigationBarItem(
-                  icon: Icon(e.value.icon),
-                  label: e.value.label,
-                ))
+            .map((e) {
+              final isNotification = e.value.label == 'Notifikasi';
+              return BottomNavigationBarItem(
+                icon: isNotification && unreadCount > 0
+                    ? Badge(
+                        label: Text(unreadCount.toString()),
+                        child: Icon(e.value.icon),
+                      )
+                    : Icon(e.value.icon),
+                label: e.value.label,
+              );
+            })
             .toList(),
       ),
     );

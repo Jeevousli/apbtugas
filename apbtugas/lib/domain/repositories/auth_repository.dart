@@ -37,4 +37,24 @@ abstract class AuthRepository {
     required String name,
     required String nik,
   });
+
+  /// Update employee profile details
+  Future<UserEntity> updateProfile({
+    required String uid,
+    String? name,
+    String? phone,
+    String? photoUrl,
+  });
+
+  /// Change password
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  /// Upload profile photo and return download URL
+  Future<String> uploadProfilePhoto({
+    required String uid,
+    required String filePath,
+  });
 }
