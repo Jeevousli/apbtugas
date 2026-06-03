@@ -61,6 +61,7 @@ class AttendanceProvider extends ChangeNotifier {
         timestamp: partialRecord.timestamp,
         status: partialRecord.status,
         distanceInMeters: partialRecord.distanceInMeters,
+        selfieUrl: partialRecord.selfieUrl, // ✅ simpan URL selfie ke Firestore
       );
 
       await repository.saveAttendanceRecord(newRecord);

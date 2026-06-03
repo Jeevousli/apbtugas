@@ -67,6 +67,8 @@ class _FaceCaptureViewState extends State<_FaceCaptureView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnim;
+  bool _navigated = false; // guard against double navigation
+
   @override
   void initState() {
     super.initState();
@@ -102,30 +104,6 @@ class _FaceCaptureViewState extends State<_FaceCaptureView>
   Widget build(BuildContext context) {
     final provider = context.watch<FaceCaptureProvider>();
     final size = MediaQuery.of(context).size;
-
-    // Navigate to result screens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (provider.status == FaceValidationStatus.success &&
-          provider.selfieUrl != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => FaceSuccessScreen(
-              selfieImagePath: provider.capturedImagePath!,
-              selfieUrl: provider.selfieUrl!,
-              attendanceType: widget.attendanceType,
-              userId: widget.userId,
-              userName: widget.userName,
-              gpsStatus: widget.gpsStatus,
-              distanceInMeters: widget.distanceInMeters,
-            ),
-          ),
-        );
-      } else if (provider.status == FaceValidationStatus.failed &&
-          provider.capturedImagePath == null) {
-        // Only navigate to failed if error is unrecoverable (not during stream)
-      }
-    });
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -559,8 +537,22 @@ class _FaceCaptureViewState extends State<_FaceCaptureView>
           ),
         ),
       );
+    } else {
+      // Show success screen
+      navigator.pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => FaceSuccessScreen(
+            selfieImagePath: provider.capturedImagePath!,
+            selfieUrl: selfieUrl,
+            attendanceType: widget.attendanceType,
+            userId: widget.userId,
+            userName: widget.userName,
+            gpsStatus: widget.gpsStatus,
+            distanceInMeters: widget.distanceInMeters,
+          ),
+        ),
+      );
     }
-    // If success, the addPostFrameCallback in build() handles navigation
   }
 }
 

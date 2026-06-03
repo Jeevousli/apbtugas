@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' show Size;
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
@@ -72,6 +73,10 @@ class FaceCaptureProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   bool _isProcessingFrame = false;
+  bool _isDisposed = false;
+
+  // ── Rotation helper ──────────────────────────────────────────
+  InputImageRotation _sensorRotation = InputImageRotation.rotation270deg;
 
   // ── Lifecycle ────────────────────────────────────────────────
 
@@ -92,15 +97,24 @@ class FaceCaptureProvider extends ChangeNotifier {
       return;
     }
 
+    // Compute rotation from sensor orientation
+    _sensorRotation = _rotationFromSensorDegrees(frontCamera.sensorOrientation);
+
+    // Use bgra8888 on iOS, yuv420 on Android — MLKit needs NV21 (YUV) on Android
+    final formatGroup = Platform.isIOS
+        ? ImageFormatGroup.bgra8888
+        : ImageFormatGroup.yuv420;
+
     _cameraController = CameraController(
       frontCamera,
       ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
+      imageFormatGroup: formatGroup,
     );
 
     try {
       await _cameraController!.initialize();
+      if (_isDisposed) return;
       _setStatus(FaceValidationStatus.detecting, 'Arahkan wajah ke kamera...');
       _startImageStream();
       notifyListeners();
@@ -109,8 +123,23 @@ class FaceCaptureProvider extends ChangeNotifier {
     }
   }
 
+  InputImageRotation _rotationFromSensorDegrees(int degrees) {
+    switch (degrees) {
+      case 0:
+        return InputImageRotation.rotation0deg;
+      case 90:
+        return InputImageRotation.rotation90deg;
+      case 180:
+        return InputImageRotation.rotation180deg;
+      default: // 270
+        return InputImageRotation.rotation270deg;
+    }
+  }
+
   void _startImageStream() {
+    if (_isDisposed) return;
     _cameraController?.startImageStream((CameraImage image) async {
+      if (_isDisposed) return;
       if (_isProcessingFrame) return;
       if (_status == FaceValidationStatus.capturing ||
           _status == FaceValidationStatus.uploading ||
@@ -121,6 +150,8 @@ class FaceCaptureProvider extends ChangeNotifier {
       _isProcessingFrame = true;
       try {
         await _processFrame(image);
+      } catch (e) {
+        debugPrint('Frame stream error: $e');
       } finally {
         _isProcessingFrame = false;
       }
@@ -133,7 +164,8 @@ class FaceCaptureProvider extends ChangeNotifier {
       final avgBrightness = _computeAverageBrightness(image);
       if (avgBrightness < 40) {
         _lightingStatus = LightingStatus.tooDark;
-        _setStatus(FaceValidationStatus.tooDark, 'Pencahayaan terlalu gelap. Cari tempat lebih terang.');
+        _setStatus(FaceValidationStatus.tooDark,
+            'Pencahayaan terlalu gelap. Cari tempat lebih terang.');
         return;
       }
       _lightingStatus = LightingStatus.adequate;
@@ -141,34 +173,56 @@ class FaceCaptureProvider extends ChangeNotifier {
       // ─── Blur / sharpness check (Laplacian variance approx) ───
       _sharpnessScore = _computeSharpness(image);
       if (_sharpnessScore < 8.0) {
-        _setStatus(FaceValidationStatus.blurry, 'Gambar blur. Pastikan kamera tidak goyang.');
+        _setStatus(FaceValidationStatus.blurry,
+            'Gambar blur. Pastikan kamera tidak goyang.');
         return;
       }
 
-      // ─── ML Kit face detection ─────────────────────────────────
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final Plane plane in image.planes) {
-        allBytes.putUint8List(plane.bytes);
+      // ─── Build InputImage for MLKit ────────────────────────────
+      InputImage inputImage;
+
+      if (Platform.isAndroid) {
+        // Android: yuv420 planes, MLKit accepts nv21 bytes from plane[0]
+        // We concatenate all planes bytes (Y + U/V interleaved)
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        final bytes = allBytes.done().buffer.asUint8List();
+
+        inputImage = InputImage.fromBytes(
+          bytes: bytes,
+          metadata: InputImageMetadata(
+            size: Size(image.width.toDouble(), image.height.toDouble()),
+            rotation: _sensorRotation,
+            format: InputImageFormat.nv21,
+            bytesPerRow: image.planes[0].bytesPerRow,
+          ),
+        );
+      } else {
+        // iOS: bgra8888 from plane[0]
+        inputImage = InputImage.fromBytes(
+          bytes: image.planes[0].bytes,
+          metadata: InputImageMetadata(
+            size: Size(image.width.toDouble(), image.height.toDouble()),
+            rotation: InputImageRotation.rotation0deg,
+            format: InputImageFormat.bgra8888,
+            bytesPerRow: image.planes[0].bytesPerRow,
+          ),
+        );
       }
-      final bytes = allBytes.done().buffer.asUint8List();
 
-      final inputImage = InputImage.fromBytes(
-        bytes: bytes,
-        metadata: InputImageMetadata(
-          size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: InputImageRotation.rotation270deg,
-          format: InputImageFormat.nv21,
-          bytesPerRow: image.planes[0].bytesPerRow,
-        ),
-      );
-
+      // ─── ML Kit face detection ─────────────────────────────────
       final faces = await _faceDetector.processImage(inputImage);
+      if (_isDisposed) return;
       _faceCount = faces.length;
 
       if (faces.isEmpty) {
-        _setStatus(FaceValidationStatus.noFace, 'Tidak ada wajah terdeteksi. Posisikan wajah di frame.');
+        _setStatus(FaceValidationStatus.noFace,
+            'Tidak ada wajah terdeteksi. Posisikan wajah di frame.');
       } else if (faces.length > 1) {
-        _setStatus(FaceValidationStatus.multipleFaces, 'Terdeteksi ${faces.length} wajah. Pastikan hanya 1 wajah.');
+        _setStatus(FaceValidationStatus.multipleFaces,
+            'Terdeteksi ${faces.length} wajah. Pastikan hanya 1 wajah.');
       } else {
         // All validations passed
         _setStatus(FaceValidationStatus.passed, '✓ Wajah terdeteksi. Siap capture!');
@@ -237,34 +291,43 @@ class FaceCaptureProvider extends ChangeNotifier {
     try {
       // Stop stream before taking picture
       await _cameraController!.stopImageStream();
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       final XFile photo = await _cameraController!.takePicture();
       _capturedImagePath = photo.path;
 
-      _setStatus(FaceValidationStatus.uploading, 'Mengunggah foto...');
+      final file = File(photo.path);
+      if (!await file.exists() || await file.length() == 0) {
+        throw Exception('File foto kosong atau tidak ditemukan di local device.');
+      }
 
-      // Upload to Firebase Storage
-      final userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
-      final now = DateTime.now();
-      final dateStr =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final fileName =
-          '${now.millisecondsSinceEpoch}_${now.hour}${now.minute}.jpg';
-      final storagePath = 'attendance/$userId/$dateStr/$fileName';
+      _setStatus(FaceValidationStatus.uploading, 'Menyimpan foto...');
 
-      final ref = FirebaseStorage.instance.ref().child(storagePath);
-      final uploadTask = ref.putFile(File(photo.path));
-      final snapshot = await uploadTask;
-      _selfieUrl = await snapshot.ref.getDownloadURL();
+      // ── Convert to Base64 (Opsi 2: Tanpa Firebase Storage) ────────
+      final bytes = await file.readAsBytes();
+      final base64String = base64Encode(bytes);
+      
+      // Kita tambahkan prefix data URL agar mudah diidentifikasi nanti
+      _selfieUrl = 'data:image/jpeg;base64,$base64String';
+      
+      debugPrint('Berhasil memproses foto menjadi Base64 (panjang: ${_selfieUrl!.length})');
 
+      if (_isDisposed) return _selfieUrl;
       _setStatus(FaceValidationStatus.success, 'Foto berhasil diambil!');
       return _selfieUrl;
     } catch (e) {
+      debugPrint('Capture/Convert error: $e');
       _errorMessage = e.toString();
-      _setStatus(FaceValidationStatus.failed, 'Gagal mengambil foto: $e');
-      // Restart stream if capture failed
-      _startImageStream();
+
+      if (_capturedImagePath != null) {
+        _selfieUrl = null;
+        _setStatus(FaceValidationStatus.failed, 'Gagal memproses foto:\n$e');
+      } else {
+        _setStatus(FaceValidationStatus.failed, 'Gagal mengambil foto: $e');
+      }
+
+      // Restart stream untuk coba lagi
+      if (!_isDisposed) _startImageStream();
       return null;
     }
   }
@@ -281,6 +344,7 @@ class FaceCaptureProvider extends ChangeNotifier {
   }
 
   void _setStatus(FaceValidationStatus status, String message) {
+    if (_isDisposed) return;
     _status = status;
     _statusMessage = message;
     notifyListeners();
@@ -288,6 +352,7 @@ class FaceCaptureProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _cameraController?.stopImageStream().catchError((_) {});
     _cameraController?.dispose();
     _faceDetector.close();

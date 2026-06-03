@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/attendance_provider.dart';
@@ -10,6 +8,9 @@ import '../../widgets/app_logo.dart';
 import '../../widgets/clock_in_button.dart';
 import '../../../domain/entities/attendance_record.dart';
 import '../../../domain/entities/gps_status.dart';
+import '../employee/history_screen.dart';
+import '../employee/notifications_screen.dart';
+import '../employee/profile_screen.dart';
 
 class EmployeeDashboardScreen extends StatefulWidget {
   const EmployeeDashboardScreen({super.key});
@@ -35,51 +36,52 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-    _NavItem(icon: Icons.fingerprint_rounded, label: 'Absensi'),
-    _NavItem(icon: Icons.campaign_rounded, label: 'Pengumuman'),
+    _NavItem(icon: Icons.history_rounded, label: 'Riwayat'),
+    _NavItem(icon: Icons.notifications_rounded, label: 'Notifikasi'),
     _NavItem(icon: Icons.person_rounded, label: 'Profil'),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final attendance = context.watch<AttendanceProvider>();
-    final user = auth.currentUser;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
         title: const AppLogo(size: 32, showTagline: false, horizontal: true),
         actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_outlined),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
+          if (_selectedIndex == 0)
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: () {
+                final user = context.read<AuthProvider>().currentUser;
+                if (user != null) {
+                  context.read<AttendanceProvider>().fetchData(user);
+                }
+              },
             ),
-            onPressed: () {},
-          ),
           const SizedBox(width: 8),
         ],
       ),
-      body: _buildBody(context, user, attendance),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          _buildDashboardBody(context),
+          const HistoryScreen(),
+          const NotificationsScreen(),
+          const ProfileScreen(),
+        ],
+      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildBody(BuildContext context, user, AttendanceProvider attendance) {
+  // ═══════════════════════════════════════════════════════════════════
+  //  TAB 1: Dashboard (Home)
+  // ═══════════════════════════════════════════════════════════════════
+  Widget _buildDashboardBody(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final attendance = context.watch<AttendanceProvider>();
+    final user = auth.currentUser;
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -104,18 +106,9 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
               _buildGreetingCard(context, user),
               const SizedBox(height: 20),
 
-              // Quick Actions
-              Text(
-                'Aksi Cepat',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              _buildQuickActions(context),
-              const SizedBox(height: 20),
-
               // Absensi Hari Ini (GPS Validation)
               Text(
-                'Absensi GPS',
+                'Absensi Hari Ini',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
@@ -131,22 +124,29 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
               _buildAttendanceSummary(context, attendance),
               const SizedBox(height: 20),
 
-              // Riwayat Absensi Terakhir
-              Text(
-                'Riwayat Absensi Terakhir',
-                style: Theme.of(context).textTheme.titleLarge,
+              // Riwayat Absensi Terakhir (preview 5 terbaru)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Riwayat Terakhir',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _selectedIndex = 1),
+                    child: const Text(
+                      'Lihat Semua',
+                      style: TextStyle(
+                        color: AppColors.secondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               _buildAttendanceHistory(context, attendance),
-              const SizedBox(height: 20),
-
-              // Announcements
-              Text(
-                'Pengumuman Terbaru',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              _buildAnnouncementPlaceholders(context),
             ],
           ),
         ),
@@ -154,7 +154,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
     );
   }
 
-  Widget _buildDynamicClockButton(BuildContext context, user, AttendanceProvider attendance) {
+  Widget _buildDynamicClockButton(
+      BuildContext context, user, AttendanceProvider attendance) {
     if (attendance.isLoading && attendance.todayRecords.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -170,20 +171,23 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
         ),
         child: Column(
           children: [
-            const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 32),
+            const Icon(Icons.check_circle_rounded,
+                color: AppColors.success, size: 32),
             const SizedBox(height: 8),
             Text(
               'Anda sudah menyelesaikan absensi hari ini.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.success,
-              ),
+                    color: AppColors.success,
+                  ),
             ),
           ],
         ),
       );
     }
 
-    final type = attendance.hasClockedInToday ? AttendanceType.clockOut : AttendanceType.clockIn;
+    final type = attendance.hasClockedInToday
+        ? AttendanceType.clockOut
+        : AttendanceType.clockIn;
 
     return ClockInButton(
       attendanceType: type,
@@ -288,82 +292,26 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    final actions = [
-      _QuickAction(
-          icon: Icons.fingerprint_rounded,
-          label: 'Absen\nMasuk',
-          color: AppColors.success),
-      _QuickAction(
-          icon: Icons.login_rounded,
-          label: 'Absen\nKeluar',
-          color: AppColors.info),
-      _QuickAction(
-          icon: Icons.assignment_outlined,
-          label: 'Izin\n& Cuti',
-          color: AppColors.warning),
-      _QuickAction(
-          icon: Icons.history_rounded,
-          label: 'Riwayat\nAbsensi',
-          color: AppColors.secondary),
-    ];
-
-    return Row(
-      children: actions
-          .map((action) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: _buildQuickActionCard(context, action),
-                ),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildQuickActionCard(BuildContext context, _QuickAction action) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: AppColors.primaryCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: action.color.withAlpha(50)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: action.color.withAlpha(26),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(action.icon, color: action.color, size: 22),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              action.label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttendanceSummary(BuildContext context, AttendanceProvider attendance) {
+  Widget _buildAttendanceSummary(
+      BuildContext context, AttendanceProvider attendance) {
     final stats = attendance.weeklyStats;
     final statList = [
-      _AttendanceStat(label: 'Hadir', value: '${stats['present'] ?? 0}', color: AppColors.success),
-      _AttendanceStat(label: 'Telat', value: '${stats['late'] ?? 0}', color: AppColors.warning),
-      _AttendanceStat(label: 'Alpha', value: '${stats['absent'] ?? 0}', color: AppColors.error),
-      _AttendanceStat(label: 'Izin', value: '${stats['leave'] ?? 0}', color: AppColors.secondary),
+      _AttendanceStat(
+          label: 'Hadir',
+          value: '${stats['present'] ?? 0}',
+          color: AppColors.success),
+      _AttendanceStat(
+          label: 'Telat',
+          value: '${stats['late'] ?? 0}',
+          color: AppColors.warning),
+      _AttendanceStat(
+          label: 'Alpha',
+          value: '${stats['absent'] ?? 0}',
+          color: AppColors.error),
+      _AttendanceStat(
+          label: 'Izin',
+          value: '${stats['leave'] ?? 0}',
+          color: AppColors.secondary),
     ];
 
     return Container(
@@ -403,7 +351,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
     );
   }
 
-  Widget _buildAttendanceHistory(BuildContext context, AttendanceProvider attendance) {
+  Widget _buildAttendanceHistory(
+      BuildContext context, AttendanceProvider attendance) {
     if (attendance.isLoading && attendance.history.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -416,12 +365,16 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
           color: AppColors.primaryCard,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Text('Belum ada riwayat absensi.', textAlign: TextAlign.center),
+        child: const Text('Belum ada riwayat absensi.',
+            textAlign: TextAlign.center),
       );
     }
 
+    // Tampilkan maksimal 5 record terbaru sebagai preview
+    final previewRecords = attendance.history.take(5).toList();
+
     return Column(
-      children: attendance.history.map((record) {
+      children: previewRecords.map((record) {
         final isClockIn = record.type == AttendanceType.clockIn;
         final iconColor = isClockIn ? AppColors.success : AppColors.info;
         return Container(
@@ -472,7 +425,9 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
               Text(
                 record.status == 'IN_AREA' ? 'Valid' : 'Invalid',
                 style: TextStyle(
-                  color: record.status == 'IN_AREA' ? AppColors.success : AppColors.error,
+                  color: record.status == 'IN_AREA'
+                      ? AppColors.success
+                      : AppColors.error,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -484,62 +439,9 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
     );
   }
 
-  Widget _buildAnnouncementPlaceholders(BuildContext context) {
-    return Column(
-      children: List.generate(
-        2,
-        (i) => Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.primaryCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primaryCard),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withAlpha(26),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.campaign_rounded,
-                    color: AppColors.secondary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      i == 0 ? 'Perubahan Jam Operasional' : 'Safety Briefing',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      i == 0
-                          ? 'Efektif mulai 1 Juni 2025'
-                          : 'Wajib hadir - Senin, 2 Juni 2025',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: 11,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textMuted),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
+  // ═══════════════════════════════════════════════════════════════════
+  //  BOTTOM NAVIGATION BAR
+  // ═══════════════════════════════════════════════════════════════════
   Widget _buildBottomNav() {
     return Container(
       decoration: const BoxDecoration(
@@ -548,13 +450,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
       ),
       child: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (i) {
-          if (i == 3) {
-            _showLogoutDialog();
-            return;
-          }
-          setState(() => _selectedIndex = i);
-        },
+        onTap: (i) => setState(() => _selectedIndex = i),
         items: _navItems
             .asMap()
             .entries
@@ -566,47 +462,12 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
       ),
     );
   }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.primaryCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(AppStrings.logout),
-        content: const Text(AppStrings.logoutConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(AppStrings.cancelButton),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await context.read<AuthProvider>().logout();
-              if (mounted) context.go(AppRoutes.login);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text(AppStrings.logoutButton),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _NavItem {
   final IconData icon;
   final String label;
   const _NavItem({required this.icon, required this.label});
-}
-
-class _QuickAction {
-  final IconData icon;
-  final String label;
-  final Color color;
-  const _QuickAction(
-      {required this.icon, required this.label, required this.color});
 }
 
 class _AttendanceStat {
