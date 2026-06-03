@@ -105,15 +105,23 @@ class _FaceSuccessScreenState extends State<FaceSuccessScreen>
       final user = auth.currentUser;
 
       if (user != null) {
+        // Determine attendanceStatus based on time (after 09:00 = telat)
+        final now = DateTime.now();
+        final isLate = now.hour > 9 || (now.hour == 9 && now.minute > 0);
+        final attendanceStatus = widget.attendanceType == AttendanceType.clockIn
+            ? (isLate ? AttendanceStatus.telat : AttendanceStatus.hadir)
+            : AttendanceStatus.hadir;
+
         final record = AttendanceRecord(
           id: '',
           userId: widget.userId,
           userName: widget.userName,
           type: widget.attendanceType,
-          timestamp: DateTime.now(),
+          timestamp: now,
           status: widget.gpsStatus,
           distanceInMeters: widget.distanceInMeters,
           selfieUrl: widget.selfieUrl,
+          attendanceStatus: attendanceStatus,
         );
         await attendance.clock(user, widget.attendanceType, record);
       }

@@ -31,7 +31,13 @@ import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/attendance_provider.dart';
 import 'presentation/providers/profile_provider.dart';
 import 'presentation/providers/notification_provider.dart';
+import 'presentation/providers/admin_provider.dart';
 import 'presentation/screens/admin/create_employee_screen.dart';
+import 'presentation/screens/admin/admin_employee_list_screen.dart';
+import 'presentation/screens/admin/admin_employee_detail_screen.dart';
+import 'presentation/screens/admin/admin_attendance_logs_screen.dart';
+import 'presentation/screens/admin/admin_kpi_charts_screen.dart';
+import 'presentation/screens/admin/admin_map_overview_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/dashboard/admin_dashboard_screen.dart';
@@ -143,6 +149,12 @@ class MyApp extends StatelessWidget {
             uploadProfilePhotoUseCase: UploadProfilePhotoUseCase(authRepository),
           ),
         ),
+        // Admin Monitoring Provider
+        ChangeNotifierProvider(
+          create: (_) => AdminProvider(
+            firestore: FirebaseFirestore.instance,
+          ),
+        ),
       ],
       child: MaterialApp.router(
         title: 'APB Connect',
@@ -157,6 +169,7 @@ class MyApp extends StatelessWidget {
     return GoRouter(
       initialLocation: AppRoutes.splash,
       routes: [
+        // ── Core Routes ─────────────────────────────────────────
         GoRoute(
           path: AppRoutes.splash,
           builder: (context, state) => const SplashScreen(),
@@ -195,6 +208,36 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: AppRoutes.changePassword,
           builder: (context, state) => const ChangePasswordScreen(),
+        ),
+
+        // ── Admin Monitoring Routes ──────────────────────────────
+        GoRoute(
+          path: AppRoutes.adminEmployeeList,
+          builder: (context, state) => const AdminEmployeeListScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.adminEmployeeDetail,
+          builder: (context, state) {
+            final uid = state.uri.queryParameters['uid'] ?? '';
+            return AdminEmployeeDetailScreen(uid: uid);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.adminAttendanceLogs,
+          builder: (context, state) {
+            final uid = state.uri.queryParameters['uid'] ?? '';
+            final name = state.uri.queryParameters['name'] ?? 'Karyawan';
+            return AdminAttendanceLogsScreen(
+                uid: uid, employeeName: name);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.adminKpiCharts,
+          builder: (context, state) => const AdminKpiChartsScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.adminMapOverview,
+          builder: (context, state) => const AdminMapOverviewScreen(),
         ),
       ],
     );

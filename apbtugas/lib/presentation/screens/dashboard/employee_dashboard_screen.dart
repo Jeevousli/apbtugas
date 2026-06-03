@@ -195,6 +195,11 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
       attendanceType: type,
       onClockSuccess: (result, type) async {
         if (user != null) {
+          final now = DateTime.now();
+          final isLate = now.hour > 9 || (now.hour == 9 && now.minute > 0);
+          final attendanceStatus = type == AttendanceType.clockIn
+              ? (isLate ? AttendanceStatus.telat : AttendanceStatus.hadir)
+              : AttendanceStatus.hadir;
           final partial = AttendanceRecord(
             id: '',
             userId: user.uid,
@@ -203,6 +208,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
             timestamp: result.timestamp,
             status: result.status.label,
             distanceInMeters: result.distanceInMeters,
+            attendanceStatus: attendanceStatus,
           );
           await attendance.clock(user, type, partial);
         }
