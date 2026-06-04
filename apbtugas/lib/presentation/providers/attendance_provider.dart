@@ -1,12 +1,23 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/attendance_record.dart';
 import '../../domain/repositories/attendance_repository.dart';
+import '../../domain/repositories/notification_repository.dart';
+import '../../domain/entities/notification_entity.dart';
 import '../../domain/entities/user_entity.dart';
+
+import '../../core/services/fcm_service.dart';
 
 class AttendanceProvider extends ChangeNotifier {
   final AttendanceRepository repository;
+  final FcmService fcmService;
+  final NotificationRepository notificationRepository;
 
-  AttendanceProvider({required this.repository});
+  AttendanceProvider({
+    required this.repository,
+    required this.fcmService,
+    required this.notificationRepository,
+  });
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -105,8 +116,14 @@ class AttendanceProvider extends ChangeNotifier {
       }
       _hasMoreHistory = results.length == 15;
       _errorMessage = null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable') {
+        _errorMessage = 'Tidak ada koneksi internet. Mode offline aktif.';
+      } else {
+        _errorMessage = 'Error absensi: ${e.message}';
+      }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = 'Gagal memuat histori absensi.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -129,8 +146,14 @@ class AttendanceProvider extends ChangeNotifier {
     try {
       _selectedRecord = await repository.getAttendanceById(userId, recordId);
       _errorMessage = null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable') {
+        _errorMessage = 'Tidak ada koneksi internet.';
+      } else {
+        _errorMessage = 'Error absensi: ${e.message}';
+      }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = 'Gagal memuat detail absensi.';
     } finally {
       _isLoadingDetail = false;
       notifyListeners();
@@ -158,8 +181,38 @@ class AttendanceProvider extends ChangeNotifier {
 
       await repository.saveAttendanceRecord(newRecord);
       await fetchData(user); // Refresh data
+      
+      // Tampilkan Notifikasi
+      final isClockIn = type == AttendanceType.clockIn;
+      final title = isClockIn ? '✅ Berhasil Absen Masuk' : '🌙 Berhasil Absen Pulang';
+      final body = isClockIn 
+            ? 'Selamat bekerja, ${user.name}!'
+            : 'Terima kasih atas kerja keras Anda hari ini.';
+            
+      fcmService.showLocalNotification(
+        title: title,
+        body: body,
+        id: isClockIn ? 10 : 20,
+      );
+      
+      // Simpan ke Halaman Notifikasi (Firestore)
+      final notif = NotificationEntity(
+        id: '',
+        title: title,
+        body: body,
+        timestamp: DateTime.now(),
+        type: NotificationType.clockSuccess,
+        isRead: false,
+      );
+      await notificationRepository.saveNotification(user.uid, notif);
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable') {
+        _errorMessage = 'Tidak ada koneksi internet. Absen gagal disimpan.';
+      } else {
+        _errorMessage = 'Error absensi: ${e.message}';
+      }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = 'Gagal melakukan absensi.';
     } finally {
       _setLoading(false);
     }

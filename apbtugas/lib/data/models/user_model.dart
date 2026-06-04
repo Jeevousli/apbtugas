@@ -19,13 +19,21 @@ class UserModel extends UserEntity {
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    
+    DateTime parsedDate = DateTime.now();
+    if (data['createdAt'] is Timestamp) {
+      parsedDate = (data['createdAt'] as Timestamp).toDate();
+    } else if (data['createdAt'] is String) {
+      parsedDate = DateTime.tryParse(data['createdAt']) ?? DateTime.now();
+    }
+
     return UserModel(
       uid: doc.id,
       name: data['name'] ?? '',
       email: data['email'] ?? '',
       nik: data['nik'] ?? '',
       role: data['role'] == 'admin' ? UserRole.admin : UserRole.employee,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: parsedDate,
       fcmToken: data['fcmToken'],
       photoUrl: data['photoUrl'],
       phone: data['phone'],

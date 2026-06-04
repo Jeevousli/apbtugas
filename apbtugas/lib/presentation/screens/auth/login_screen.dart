@@ -334,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen>
                       const SizedBox(height: 40),
                       // Footer
                       Text(
-                        '© 2025 APB Connect v${AppStrings.appVersion}',
+                        '© 2025 KiniHadir v${AppStrings.appVersion}',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall

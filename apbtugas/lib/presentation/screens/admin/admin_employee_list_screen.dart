@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../domain/entities/user_entity.dart';
@@ -189,8 +190,10 @@ class _AdminEmployeeListScreenState extends State<AdminEmployeeListScreen> {
           return Image.memory(base64Decode(b64), fit: BoxFit.cover);
         } catch (_) {}
       } else {
-        return Image.network(photoUrl, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _initials(emp.name));
+        return CachedNetworkImage(
+            imageUrl: photoUrl, 
+            fit: BoxFit.cover,
+            errorWidget: (context, url, error) => _initials(emp.name));
       }
     }
     return _initials(emp.name);

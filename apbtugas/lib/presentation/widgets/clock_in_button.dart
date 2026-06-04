@@ -5,8 +5,10 @@ import '../../core/services/gps_validator.dart';
 import '../../domain/entities/gps_status.dart';
 import '../../domain/entities/gps_validation_result.dart';
 import '../../domain/entities/attendance_record.dart';
+import '../../domain/entities/notification_entity.dart';
 import '../screens/camera/face_capture_screen.dart';
 import '../providers/auth_provider.dart';
+import '../providers/attendance_provider.dart';
 import 'package:provider/provider.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -132,12 +134,60 @@ class _ClockInButtonState extends State<ClockInButton>
             'Anda harus berada dalam radius 500 m.',
             isError: true,
           );
+          final title = '❌ Gagal Absen: Lokasi Kejauhan';
+          final body = 'Anda berada ${result.formattedDistance} dari kantor. Mendekatlah ke radius 500m.';
+          
+          final provider = context.read<AttendanceProvider>();
+          provider.fcmService.showLocalNotification(
+            title: title,
+            body: body,
+            id: 30,
+          );
+          
+          final user = context.read<AuthProvider>().currentUser;
+          if (user != null) {
+            provider.notificationRepository.saveNotification(
+              user.uid,
+              NotificationEntity(
+                id: '',
+                title: title,
+                body: body,
+                timestamp: DateTime.now(),
+                type: NotificationType.gpsFailed,
+                isRead: false,
+              ),
+            );
+          }
         }
       }
     } on GpsException catch (e) {
       if (!mounted) return;
       setState(() => _errorMessage = e.message);
       _showSnackBar('⚠️ ${e.message}', isError: true);
+      final title = '⚠️ Gagal Absen: GPS Error';
+      final body = e.message;
+      
+      final provider = context.read<AttendanceProvider>();
+      provider.fcmService.showLocalNotification(
+        title: title,
+        body: body,
+        id: 31,
+      );
+      
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        provider.notificationRepository.saveNotification(
+          user.uid,
+          NotificationEntity(
+            id: '',
+            title: title,
+            body: body,
+            timestamp: DateTime.now(),
+            type: NotificationType.gpsFailed,
+            isRead: false,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _errorMessage = 'Terjadi kesalahan: $e');

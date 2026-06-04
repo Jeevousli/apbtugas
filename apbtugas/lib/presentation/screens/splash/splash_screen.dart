@@ -182,26 +182,44 @@ class _SplashScreenState extends State<SplashScreen>
                           },
                           child: Column(
                             children: [
-                              Text(
-                                AppStrings.appName,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineLarge
-                                    ?.copyWith(
-                                      color: AppColors.white,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1,
+                              RichText(
+                                textAlign: TextAlign.center,
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Kini',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineLarge
+                                          ?.copyWith(
+                                            color: AppColors.white,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1,
+                                          ),
                                     ),
+                                    TextSpan(
+                                      text: 'Hadir',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineLarge
+                                          ?.copyWith(
+                                            color: AppColors.secondary,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                AppStrings.appTagline,
+                                'Absensi Cerdas & Aman',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium
                                     ?.copyWith(
                                       color: AppColors.textSecondary,
-                                      letterSpacing: 0.3,
+                                      letterSpacing: 0.5,
                                     ),
                                 textAlign: TextAlign.center,
                               ),
@@ -227,20 +245,24 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Column(
                         children: [
                           SizedBox(
-                            width: 32,
-                            height: 32,
+                            width: 28,
+                            height: 28,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.secondary.withAlpha(180),
+                              strokeWidth: 2.5,
+                              color: AppColors.secondary,
+                              backgroundColor: AppColors.secondary.withAlpha(30),
                             ),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Memuat...',
+                            'Menyiapkan aplikasi...',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
-                                ?.copyWith(color: AppColors.textMuted),
+                                ?.copyWith(
+                                  color: AppColors.textMuted,
+                                  letterSpacing: 0.3,
+                                ),
                           ),
                         ],
                       ),

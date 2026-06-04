@@ -263,7 +263,7 @@ class _AdminKpiChartsScreenState extends State<AdminKpiChartsScreen> {
     final maxCount = hourRange
         .map((h) => kpi.hourlyDistribution[h] ?? 0)
         .reduce((a, b) => a > b ? a : b)
-        .clamp(1, double.infinity)
+        .clamp(1, 9999)
         .toDouble();
 
     return _chartCard(

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../domain/entities/user_entity.dart';
 import '../../providers/admin_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class AdminEmployeeDetailScreen extends StatefulWidget {
   final String uid;
@@ -304,8 +305,10 @@ class _AdminEmployeeDetailScreenState
               fit: BoxFit.cover);
         } catch (_) {}
       } else {
-        return Image.network(url, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _initials(emp.name));
+        return CachedNetworkImage(
+            imageUrl: url, 
+            fit: BoxFit.cover,
+            errorWidget: (context, url, error) => _initials(emp.name));
       }
     }
     return _initials(emp.name);

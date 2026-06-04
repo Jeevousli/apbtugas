@@ -131,17 +131,21 @@ class AdminProvider extends ChangeNotifier {
       final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      // Fetch today's records across all employees (collectionGroup)
-      final recordsSnap = await _firestore
-          .collectionGroup('records')
-          .where('timestamp',
-              isGreaterThanOrEqualTo: startOfDay.toIso8601String())
+      // Fetch today's records by querying each employee's subcollection 
+      // This avoids the need for a composite index required by collectionGroup
+      final futures = allUsers.map((emp) => _firestore
+          .collection('attendance')
+          .doc(emp.uid)
+          .collection('records')
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay.toIso8601String())
           .where('timestamp', isLessThan: endOfDay.toIso8601String())
-          .get();
-
-      final todayRecords = recordsSnap.docs
-          .map((d) => AttendanceRecord.fromFirestore(d.id, d.data()))
-          .toList();
+          .get());
+          
+      final snaps = await Future.wait(futures);
+      
+      final todayRecords = snaps.expand((snap) => 
+          snap.docs.map((d) => AttendanceRecord.fromFirestore(d.id, d.data()))
+      ).toList();
 
       // Unique clock-in records per user (first clock-in of the day)
       final Map<String, AttendanceRecord> firstClockIns = {};
@@ -201,8 +205,14 @@ class AdminProvider extends ChangeNotifier {
                 status: r.attendanceStatus,
               ))
           .toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable') {
+        _error = 'Tidak ada koneksi internet. Cek jaringan Anda.';
+      } else {
+        _error = 'Error database: ${e.message}';
+      }
     } catch (e) {
-      _error = e.toString();
+      _error = 'Terjadi kesalahan tidak terduga.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -222,16 +232,18 @@ class AdminProvider extends ChangeNotifier {
 
       final totalEmp = _employees.isNotEmpty ? _employees.length : 1;
 
-      final recordsSnap = await _firestore
-          .collectionGroup('records')
+      final futures = _employees.map((emp) => _firestore
+          .collection('attendance')
+          .doc(emp.uid)
+          .collection('records')
           .where('timestamp',
               isGreaterThanOrEqualTo: startDate.toIso8601String())
-          .where('type', isEqualTo: 'clock_in')
-          .get();
+          .get());
 
-      final records = recordsSnap.docs
-          .map((d) => AttendanceRecord.fromFirestore(d.id, d.data()))
-          .toList();
+      final snaps = await Future.wait(futures);
+      final records = snaps.expand((snap) => 
+          snap.docs.map((d) => AttendanceRecord.fromFirestore(d.id, d.data()))
+      ).where((r) => r.type == AttendanceType.clockIn).toList();
 
       // Group by day
       final List<double> attendanceRates = List.filled(7, 0.0);
@@ -267,8 +279,14 @@ class AdminProvider extends ChangeNotifier {
         lateTrend: lateTrend,
         hourlyDistribution: hourlyDist,
       );
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable') {
+        _error = 'Tidak ada koneksi internet. Cek jaringan Anda.';
+      } else {
+        _error = 'Error database: ${e.message}';
+      }
     } catch (e) {
-      _error = e.toString();
+      _error = 'Terjadi kesalahan saat memuat grafik.';
     } finally {
       _isLoadingKpi = false;
       notifyListeners();
@@ -420,30 +438,11 @@ class AdminProvider extends ChangeNotifier {
   }
 
   // ─── Stream today's stats in real-time ─────────────────────────
-  Stream<int> streamTodayAttendanceCount() {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
-    final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    return _firestore
-        .collectionGroup('records')
-        .where('type', isEqualTo: 'clock_in')
-        .where('timestamp',
-            isGreaterThanOrEqualTo: startOfDay.toIso8601String())
-        .where('timestamp', isLessThan: endOfDay.toIso8601String())
-        .snapshots()
-        .map((snap) {
-      final Set<String> uniqueUsers = {};
-      for (var d in snap.docs) {
-        final uid = d.data()['userId'] as String? ?? '';
-        uniqueUsers.add(uid);
-      }
-      return uniqueUsers.length;
-    });
-  }
 
   void clearError() {
     _error = null;
     notifyListeners();
   }
 }
+ 

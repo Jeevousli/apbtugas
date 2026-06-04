@@ -6,11 +6,18 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/custom_button.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -239,7 +246,7 @@ class ProfileScreen extends StatelessWidget {
 
               // ── Version ──
               Text(
-                'APB Connect v${AppStrings.appVersion}',
+                'KiniHadir v${AppStrings.appVersion}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 11,
@@ -266,12 +273,12 @@ class ProfileScreen extends StatelessWidget {
           );
         } catch (_) {}
       } else {
-        return Image.network(
-          photoUrl,
+        return CachedNetworkImage(
+          imageUrl: photoUrl,
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
-          errorBuilder: (context, error, stackTrace) => _buildInitialsAvatar(userName),
+          errorWidget: (context, url, error) => _buildInitialsAvatar(userName),
         );
       }
     }

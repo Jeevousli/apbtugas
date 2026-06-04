@@ -58,21 +58,22 @@ class AppLogo extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Shield shape
+          // Background shield
           Icon(
             Icons.shield_rounded,
-            color: AppColors.white.withAlpha(30),
-            size: size * 0.7,
+            color: AppColors.white.withAlpha(25),
+            size: size * 0.75,
           ),
-          // APB text
-          Text(
-            'APB',
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: size * 0.28,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
-            ),
+          // KH monogram
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.fingerprint_rounded,
+                color: AppColors.white,
+                size: size * 0.45,
+              ),
+            ],
           ),
         ],
       ),
@@ -85,19 +86,34 @@ class AppLogo extends StatelessWidget {
       crossAxisAlignment:
           horizontal ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
-        Text(
-          'APB Connect',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: horizontal ? size * 0.25 : size * 0.22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Kini',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: horizontal ? size * 0.25 : size * 0.22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              TextSpan(
+                text: 'Hadir',
+                style: TextStyle(
+                  color: AppColors.secondary,
+                  fontSize: horizontal ? size * 0.25 : size * 0.22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
         ),
         if (showTagline) ...[
           const SizedBox(height: 4),
           Text(
-            'Connecting People, Building Safety',
+            'Absensi Cerdas & Aman',
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: horizontal ? size * 0.14 : size * 0.12,

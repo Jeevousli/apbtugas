@@ -67,7 +67,6 @@ class _FaceCaptureViewState extends State<_FaceCaptureView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnim;
-  bool _navigated = false; // guard against double navigation
 
   @override
   void initState() {

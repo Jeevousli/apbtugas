@@ -8,6 +8,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/admin_provider.dart';
 import '../../widgets/app_logo.dart';
 
+import '../admin/admin_employee_list_screen.dart';
+import '../admin/admin_kpi_charts_screen.dart';
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -32,6 +35,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final admin = context.watch<AdminProvider>();
     final user = auth.currentUser;
 
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          _buildDashboardScreen(context, admin, user),
+          const AdminEmployeeListScreen(),
+          const AdminKpiChartsScreen(),
+          const SizedBox(), // Placeholder for logout
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildDashboardScreen(BuildContext context, AdminProvider admin, dynamic user) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
@@ -61,19 +79,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _buildBody(context, admin, user),
-      bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push(AppRoutes.adminCreateEmployee),
-              icon: const Icon(Icons.person_add_rounded),
-              label: const Text('Tambah Karyawan'),
-            )
-          : null,
+      body: _buildBody(context, admin, user, (int index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      }),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push(AppRoutes.adminCreateEmployee),
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text('Tambah Karyawan'),
+      ),
     );
   }
 
-  Widget _buildBody(BuildContext context, AdminProvider admin, user) {
+  Widget _buildBody(BuildContext context, AdminProvider admin, dynamic user, Function(int) onNavigate) {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -115,6 +134,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                 ],
               ),
+              if (admin.error != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.error),
+                  ),
+                  child: Text(
+                    admin.error!,
+                    style: const TextStyle(color: AppColors.error, fontSize: 12),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               _buildStatsGrid(context, admin),
               const SizedBox(height: 20),
@@ -123,11 +157,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Text('Menu Admin',
                   style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
-              _buildAdminMenus(context),
+              _buildAdminMenus(context, onNavigate),
               const SizedBox(height: 20),
 
-              // Real-time stream badge
-              _buildStreamBadge(),
+
             ],
           ),
         ),
@@ -321,29 +354,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildAdminMenus(BuildContext context) {
+  Widget _buildAdminMenus(BuildContext context, Function(int) onNavigate) {
     final menus = [
       _MenuItem(
         icon: Icons.people_rounded,
         label: 'Daftar Karyawan',
         subtitle: 'Kelola & detail karyawan',
         color: AppColors.info,
-        onTap: () => context.push(AppRoutes.adminEmployeeList),
+        onTap: () => onNavigate(1),
       ),
       _MenuItem(
         icon: Icons.bar_chart_rounded,
         label: 'KPI & Statistik',
         subtitle: 'Grafik kehadiran mingguan',
         color: AppColors.success,
-        onTap: () => context.push(AppRoutes.adminKpiCharts),
+        onTap: () => onNavigate(2),
       ),
-      _MenuItem(
-        icon: Icons.map_rounded,
-        label: 'Peta Kehadiran',
-        subtitle: 'Lokasi clock-in real-time',
-        color: AppColors.warning,
-        onTap: () => context.push(AppRoutes.adminMapOverview),
-      ),
+
       _MenuItem(
         icon: Icons.person_add_rounded,
         label: 'Tambah Karyawan',
@@ -406,43 +433,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ))
           .toList(),
-    );
-  }
-
-  Widget _buildStreamBadge() {
-    return StreamBuilder<int>(
-      stream: context.read<AdminProvider>().streamTodayAttendanceCount(),
-      builder: (ctx, snap) {
-        final count = snap.data ?? 0;
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.primaryCard,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.success.withAlpha(40)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                    color: AppColors.success, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Live: $count karyawan telah clock-in hari ini',
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

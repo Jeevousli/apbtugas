@@ -37,7 +37,6 @@ import 'presentation/screens/admin/admin_employee_list_screen.dart';
 import 'presentation/screens/admin/admin_employee_detail_screen.dart';
 import 'presentation/screens/admin/admin_attendance_logs_screen.dart';
 import 'presentation/screens/admin/admin_kpi_charts_screen.dart';
-import 'presentation/screens/admin/admin_map_overview_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/dashboard/admin_dashboard_screen.dart';
@@ -137,7 +136,11 @@ class MyApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(
-          create: (_) => AttendanceProvider(repository: attendanceRepository),
+          create: (_) => AttendanceProvider(
+            repository: attendanceRepository,
+            fcmService: fcmService,
+            notificationRepository: notificationRepository,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(notificationRepository),
@@ -157,7 +160,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp.router(
-        title: 'APB Connect',
+        title: 'KiniHadir',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         routerConfig: _buildRouter(),
@@ -235,10 +238,7 @@ class MyApp extends StatelessWidget {
           path: AppRoutes.adminKpiCharts,
           builder: (context, state) => const AdminKpiChartsScreen(),
         ),
-        GoRoute(
-          path: AppRoutes.adminMapOverview,
-          builder: (context, state) => const AdminMapOverviewScreen(),
-        ),
+
       ],
     );
   }

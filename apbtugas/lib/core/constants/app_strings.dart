@@ -2,13 +2,13 @@ class AppStrings {
   AppStrings._();
 
   // App Info
-  static const String appName = 'APB Connect';
+  static const String appName = 'KiniHadir';
   static const String appTagline = 'Connecting People, Building Safety';
   static const String appVersion = '1.0.0';
 
   // Auth Screens
   static const String loginTitle = 'Selamat Datang';
-  static const String loginSubtitle = 'Masuk ke akun APB Connect Anda';
+  static const String loginSubtitle = 'Masuk ke akun KiniHadir Anda';
   static const String loginWithEmail = 'Login dengan Email';
   static const String loginWithNik = 'Login dengan NIK';
   static const String emailOrNikLabel = 'Email / NIK';

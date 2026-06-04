@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/attendance_record.dart';
 import '../../providers/attendance_provider.dart';
@@ -306,16 +307,13 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(
-                        "https://static-maps.yandex.ru/1.x/?ll=${record.longitude},${record.latitude}&z=16&l=map&size=450,200",
+                      child: CachedNetworkImage(
+                        imageUrl: "https://static-maps.yandex.ru/1.x/?ll=${record.longitude},${record.latitude}&z=16&l=map&size=450,200",
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(color: AppColors.secondary),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(color: AppColors.secondary),
+                        ),
+                        errorWidget: (context, url, error) {
                           return Container(
                             color: AppColors.primaryDark,
                             child: const Center(
@@ -403,16 +401,15 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
       }
     }
 
-    return Image.network(
-      selfieUrl,
+    return CachedNetworkImage(
+      imageUrl: selfieUrl,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const Center(child: CircularProgressIndicator(color: AppColors.secondary));
-      },
-      errorBuilder: (context, error, stackTrace) {
+      placeholder: (context, url) => const Center(
+        child: CircularProgressIndicator(color: AppColors.secondary),
+      ),
+      errorWidget: (context, url, error) {
         return const Center(
           child: Icon(Icons.broken_image_rounded, color: AppColors.textSecondary, size: 40),
         );

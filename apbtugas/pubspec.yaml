@@ -49,12 +49,15 @@ dependencies:
 
   # Admin Charts & Maps
   fl_chart: ^0.70.2
-  google_maps_flutter: ^2.9.0
+
 
   # Export
   csv: ^6.0.0
   path_provider: ^2.1.5
   share_plus: ^10.1.4
+  cached_network_image: ^3.4.1
+  flutter_local_notifications: ^20.1.0
+  timezone: ^0.10.1
 
 dev_dependencies:
   flutter_test:

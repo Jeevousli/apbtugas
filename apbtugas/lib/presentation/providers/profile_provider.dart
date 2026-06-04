@@ -1,5 +1,6 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
-import '../../domain/entities/user_entity.dart';
+import '../../core/errors/failures.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
 import '../../domain/usecases/change_password_usecase.dart';
 import '../../domain/usecases/upload_profile_photo_usecase.dart';

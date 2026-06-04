@@ -373,8 +373,20 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
           color: AppColors.primaryCard,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Text('Belum ada riwayat absensi.',
-            textAlign: TextAlign.center),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history_rounded, color: AppColors.textMuted, size: 40),
+            SizedBox(height: 12),
+            Text('Belum ada riwayat absensi',
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500)),
+            SizedBox(height: 4),
+            Text('Riwayat absensi Anda akan muncul di sini',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ],
+        ),
       );
     }
 

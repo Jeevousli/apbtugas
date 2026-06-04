@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -370,12 +371,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           );
         } catch (_) {}
       } else {
-        return Image.network(
-          user.photoUrl!,
+        return CachedNetworkImage(
+          imageUrl: user.photoUrl!,
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
-          errorBuilder: (context, error, stackTrace) => _buildInitials(user?.name),
+          errorWidget: (context, url, error) => _buildInitials(user?.name),
         );
       }
     }
